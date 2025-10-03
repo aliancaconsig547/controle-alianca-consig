@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registros</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <style>
+        .actions-cell { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <nav>
+          <ul>
+            <li><img src="{{ url_for('static', filename='images/logofooter.png') }}" alt="Logo" style="height: 70px;"></li>
+          </ul>
+          <ul>
+            <li><a href="{{ url_for('index') }}">Novo Cadastro</a></li>
+            <li><a href="{{ url_for('logout') }}" role="button" class="secondary outline">Sair</a></li>
+          </ul>
+        </nav>
+        <hr>
+        <h1>Relatório de Operações</h1>
+
+        <form method="get" action="{{ url_for('registros') }}">
+            <details open>
+                <summary>Filtros e Pesquisa</summary>
+                <div class="grid">
+                    <input type="search" name="q" placeholder="Pesquisar Nome, CPF, Vendedor..." value="{{ request_args.get('q', '') }}">
+                    <select name="supervisor">
+                        <option value="">Todos os Supervisores</option>
+                        {% for s in supervisores %}
+                            <option value="{{ s[0] }}" {% if request_args.get('supervisor') == s[0] %}selected{% endif %}>{{ s[0] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="grid">
+                    <label>Data Início <input type="date" name="start_date" value="{{ request_args.get('start_date', '') }}"></label>
+                    <label>Data Fim <input type="date" name="end_date" value="{{ request_args.get('end_date', '') }}"></label>
+                </div>
+                <div class="grid">
+                    <button type="submit">Filtrar</button>
+                    <a href="{{ url_for('registros') }}" role="button" class="secondary">Limpar Filtros</a>
+                    <a href="{{ url_for('download_pdf', **request_args) }}" role="button" class="contrast">Baixar Relatório (PDF)</a>
+                </div>
+            </details>
+        </form>
+
+        <article>
+            <h3 style="text-align: center;">
+                Líquido Total (Filtro): 
+                <ins>{{ "R$ {:,.2f}".format(total_liquido).replace(",", "X").replace(".", ",").replace("X", ".") }}</ins>
+            </h3>
+        </article>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}{% for category, message in messages %}
+                <p><mark class="{{ category }}">{{ message }}</mark></p>
+            {% endfor %}{% endif %}
+        {% endwith %}
+
+        <figure>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Banco Contrato</th> <th>Valor Contrato</th>
+                        <th>Líquido Empresa</th>
+                        <th>Vendedor</th>
+                        <th>Data</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for registro in registros %}
+                    <tr>
+                        <td>{{ registro.nome_cliente }}</td>
+                        <td>{{ registro.banco_contrato or 'N/A' }}</td> <td>{{ "R$ {:,.2f}".format(registro.valor_contrato).replace(",", "X").replace(".", ",").replace("X", ".") }}</td>
+                        <td><strong>{{ "R$ {:,.2f}".format(registro.liquido_empresa).replace(",", "X").replace(".", ",").replace("X", ".") }}</strong></td>
+                        <td>{{ registro.vendedor }}</td>
+                        <td>{{ registro.data_quitacao }}</td>
+                        
+                        <td>
+                            <div class="actions-cell">
+                                <a href="{{ url_for('edit', id=registro.id) }}" role="button" class="outline" style="margin: 0;">Editar</a>
+                                <form action="{{ url_for('delete', id=registro.id) }}" method="post" style="margin: 0;">
+                                    <button type="submit" class="secondary outline" onclick="return confirm('Tem certeza? A ação não pode ser desfeita.')">Excluir</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align: center;">Nenhum registro encontrado para os filtros aplicados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </figure>
+    </main>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistema de Controle</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+</head>
+<body>
+    <main class="container">
+        <article style="max-width: 450px; margin: 3rem auto; text-align: center;">
+            
+            <img src="{{ url_for('static', filename='images/logofooter.png') }}" alt="Logo da Empresa" style="max-width: 280px; margin-bottom: 2rem;">
+            
+            <hgroup>
+                <h1>Acessar Sistema</h1>
+                <p>Por favor, insira suas credenciais.</p>
+            </hgroup>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <p><mark class="{{ category }}">{{ message }}</mark></p>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('login') }}" method="post">
+                <input type="text" name="username" placeholder="Usuário" aria-label="Usuário" required>
+                <input type="password" name="password" placeholder="Senha" aria-label="Senha" required>
+                <button type="submit" class="contrast">Entrar</button>
+            </form>
+        </article>
+    </main>
+</body>
+</html>

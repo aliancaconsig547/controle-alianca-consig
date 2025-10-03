@@ -1,0 +1,4 @@
+.env
+__pycache__/
+local_test.db
+gerar_hash.py
