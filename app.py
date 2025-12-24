@@ -3,7 +3,8 @@ import io
 import base64
 from flask import Flask, render_template, request, url_for, redirect, flash, Response
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_, func
+# ADICIONADO: 'text' foi incluído aqui para permitir comandos SQL puros (SELECT 1)
+from sqlalchemy import or_, func, text
 from dotenv import load_dotenv
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash
@@ -18,6 +19,7 @@ app = Flask(__name__)
 # --- CONFIGURAÇÕES GERAIS E DO BANCO DE DADOS ---
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
 DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///local_test.db')
+# Correção para compatibilidade com versões mais recentes do SQLAlchemy e Postgres
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -251,6 +253,16 @@ def download_pdf():
         mimetype='application/pdf',
         headers={'Content-Disposition': 'attachment;filename=relatorio_operacoes.pdf'}
     )
+
+# --- ROTA PARA MANTER O BANCO E O SERVIDOR ATIVOS (KEEP-ALIVE) ---
+@app.route('/keep-alive')
+def keep_alive():
+    try:
+        # Executa uma consulta leve que não altera dados, apenas "toca" o banco para mantê-lo ativo
+        db.session.execute(text('SELECT 1'))
+        return "Sistema e Banco de Dados Ativos!", 200
+    except Exception as e:
+        return f"Erro ao conectar ao banco: {str(e)}", 500
 
 # --- EXECUÇÃO DA APLICAÇÃO ---
 if __name__ == '__main__':
