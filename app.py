@@ -63,21 +63,34 @@ class Registro(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome_cliente = db.Column(db.String(150), nullable=False)
     cpf = db.Column(db.String(14), nullable=False)
+    
+    # Valores Financeiros
+    valor_contrato = db.Column(db.Float, nullable=False)
     valor_quitado = db.Column(db.Float, nullable=True)
-    data_quitacao = db.Column(db.String(10), nullable=False)
-    supervisor = db.Column(db.String(100), nullable=False)
-    vendedor = db.Column(db.String(100), nullable=False)
+    custo_produto = db.Column(db.Float, nullable=False)
+    percentual_comissao = db.Column(db.Integer, nullable=False)
+    
+    # Novos Campos Solicitados
+    custos_contrato = db.Column(db.Float, nullable=True) # Gasolina, cartório etc
+    valor_devolvido = db.Column(db.Float, nullable=True)
+    data_devolucao = db.Column(db.String(10), nullable=True)
+    
+    # Investidor
     investidor = db.Column(db.String(100), nullable=True)
     percentual_investidor = db.Column(db.Integer, nullable=True)
-    percentual_comissao = db.Column(db.Integer, nullable=False)
     investidor_fora = db.Column(db.Boolean, default=False, nullable=False)
-    criado_em = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    valor_contrato = db.Column(db.Float, nullable=False)
-    custo_produto = db.Column(db.Float, nullable=False)
-    liquido_empresa = db.Column(db.Float, nullable=False)
+    
+    # Detalhes Operacionais
     bancos_quitados = db.Column(db.String(200), nullable=True)
     banco_contrato = db.Column(db.String(200), nullable=True)
     agencia = db.Column(db.String(100), nullable=True)
+    supervisor = db.Column(db.String(100), nullable=False)
+    vendedor = db.Column(db.String(100), nullable=False)
+    data_quitacao = db.Column(db.String(10), nullable=False)
+    
+    # Resultado Calculado
+    liquido_empresa = db.Column(db.Float, nullable=False)
+    criado_em = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
 # --- USER MOCK ---
 class User(UserMixin):
@@ -104,12 +117,18 @@ class OperacaoForm(FlaskForm):
     nome_cliente = StringField('Nome Cliente', validators=[Optional()])
     cpf = StringField('CPF', validators=[Optional()])
     
-    # MUDANÇA IMPORTANTE: Agora são StringField para aceitar a máscara "R$ ..."
+    # Campos Monetários (String para aceitar máscara R$)
     valor_contrato = StringField('Valor Contrato', validators=[Optional()])
-    custo_produto = StringField('Custo Produto', validators=[Optional()])
+    custo_produto = StringField('Custo Produto (Banco)', validators=[Optional()])
     valor_quitado = StringField('Valor Quitado', validators=[Optional()])
     
+    # Novos inputs financeiros
+    custos_contrato = StringField('Custos Extras (Gasolina/Cartório)', validators=[Optional()])
+    valor_devolvido = StringField('Valor Devolvido', validators=[Optional()])
+    data_devolucao = StringField('Data Devolução', validators=[Optional()])
+    
     percentual_comissao = SelectField('% Comissão', choices=[('20', '20%'), ('30', '30%')], coerce=int, validators=[Optional()])
+    
     investidor = StringField('Investidor', validators=[Optional()])
     percentual_investidor = SelectField('% Investidor', choices=[('0', '0%'), ('7', '7%'), ('8', '8%'), ('9', '9%'), ('10', '10%')], coerce=int, default=0)
     investidor_fora = BooleanField('Investidor de Fora')
@@ -125,20 +144,35 @@ class OperacaoForm(FlaskForm):
 with app.app_context():
     db.create_all()
 
+# --- FUNÇÃO DE CÁLCULO CENTRALIZADA ---
+def calcular_liquido_empresa(form):
+    v_contrato = parse_brl(form.valor_contrato.data)
+    v_quitado = parse_brl(form.valor_quitado.data)
+    v_custo_prod = parse_brl(form.custo_produto.data)
+    v_custos_extras = parse_brl(form.custos_contrato.data) # Novo
+    v_devolvido = parse_brl(form.valor_devolvido.data)     # Novo
+    
+    p_comissao = form.percentual_comissao.data or 0
+    
+    valor_comissao = v_contrato * (p_comissao / 100)
+    
+    # FÓRMULA ATUALIZADA:
+    # Liquido = Contrato - Quitado - Comissão - CustoProduto - CustosExtras - Devolvido
+    liquido = v_contrato - v_quitado - valor_comissao - v_custo_prod - v_custos_extras - v_devolvido
+    return liquido
+
 # --- ROTAS ---
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated: return redirect(url_for('index'))
     form = LoginForm()
-    
     if form.validate_on_submit():
         if form.username.data == admin_user.username and admin_user.check_password(form.password.data):
             login_user(admin_user, remember=True)
             return redirect(url_for('index'))
         else:
             flash('Usuário ou senha inválidos.', 'danger')
-            
     return render_template('login.html', form=form)
 
 @app.route('/logout')
@@ -154,40 +188,32 @@ def index():
     form = OperacaoForm()
     
     if form.validate_on_submit():
-        # CONVERTE O TEXTO (R$) PARA NÚMERO (FLOAT)
-        valor_contrato = parse_brl(form.valor_contrato.data)
-        valor_quitado = parse_brl(form.valor_quitado.data)
-        custo_produto = parse_brl(form.custo_produto.data)
-        
-        percentual_comissao = form.percentual_comissao.data or 0
-        
-        # Prevenção de erro em Strings
-        nome_cliente = form.nome_cliente.data or "Sem Nome"
-        cpf = form.cpf.data or ""
-        supervisor = form.supervisor.data or "Não Informado"
-        vendedor = form.vendedor.data or "Não Informado"
-        data_quitacao = form.data_quitacao.data or datetime.now().strftime('%Y-%m-%d')
-
-        valor_comissao = valor_contrato * (percentual_comissao / 100)
-        liquido_empresa = valor_contrato - valor_quitado - valor_comissao - custo_produto
+        liquido_final = calcular_liquido_empresa(form)
 
         novo_registro = Registro(
-            nome_cliente=nome_cliente,
-            cpf=cpf,
-            valor_contrato=valor_contrato,
-            custo_produto=custo_produto,
-            percentual_comissao=percentual_comissao,
+            nome_cliente=form.nome_cliente.data or "Sem Nome",
+            cpf=form.cpf.data or "",
+            valor_contrato=parse_brl(form.valor_contrato.data),
+            custo_produto=parse_brl(form.custo_produto.data),
+            valor_quitado=parse_brl(form.valor_quitado.data),
+            
+            # Novos campos salvando no banco
+            custos_contrato=parse_brl(form.custos_contrato.data),
+            valor_devolvido=parse_brl(form.valor_devolvido.data),
+            data_devolucao=form.data_devolucao.data or "",
+
+            percentual_comissao=form.percentual_comissao.data or 0,
             investidor=form.investidor.data,
-            valor_quitado=valor_quitado,
             percentual_investidor=form.percentual_investidor.data,
             investidor_fora=form.investidor_fora.data,
             bancos_quitados=form.bancos_quitados.data,
             banco_contrato=form.banco_contrato.data,
             agencia=form.agencia.data,
-            supervisor=supervisor,
-            vendedor=vendedor,
-            data_quitacao=data_quitacao,
-            liquido_empresa=liquido_empresa
+            supervisor=form.supervisor.data or "Não Informado",
+            vendedor=form.vendedor.data or "Não Informado",
+            data_quitacao=form.data_quitacao.data or datetime.now().strftime('%Y-%m-%d'),
+            
+            liquido_empresa=liquido_final
         )
         db.session.add(novo_registro)
         db.session.commit()
@@ -209,39 +235,27 @@ def edit(id):
     if form.validate_on_submit():
         form.populate_obj(registro) 
         
-        # Garantir valores padrão caso venha vazio na edição
-        registro.nome_cliente = form.nome_cliente.data or "Sem Nome"
-        registro.cpf = form.cpf.data or ""
-        registro.supervisor = form.supervisor.data or "Não Informado"
-        registro.vendedor = form.vendedor.data or "Não Informado"
-        registro.data_quitacao = form.data_quitacao.data or datetime.now().strftime('%Y-%m-%d')
+        # Conversão manual dos campos monetários
+        registro.valor_contrato = parse_brl(form.valor_contrato.data)
+        registro.valor_quitado = parse_brl(form.valor_quitado.data)
+        registro.custo_produto = parse_brl(form.custo_produto.data)
+        registro.custos_contrato = parse_brl(form.custos_contrato.data)
+        registro.valor_devolvido = parse_brl(form.valor_devolvido.data)
         
-        # CONVERSÃO PARA FLOAT NA EDIÇÃO
-        v_contrato = parse_brl(form.valor_contrato.data)
-        v_quitado = parse_brl(form.valor_quitado.data)
-        v_custo = parse_brl(form.custo_produto.data)
-        
-        # Atualiza os valores convertidos no objeto
-        registro.valor_contrato = v_contrato
-        registro.valor_quitado = v_quitado
-        registro.custo_produto = v_custo
-        
-        p_comissao = registro.percentual_comissao or 0
-        valor_comissao = v_contrato * (p_comissao / 100)
-        registro.liquido_empresa = v_contrato - v_quitado - valor_comissao - v_custo
+        # Recalcula o líquido na edição
+        registro.liquido_empresa = calcular_liquido_empresa(form)
         
         db.session.commit()
         flash('Operação atualizada com sucesso!', 'success')
         return redirect(url_for('registros'))
     
-    # Se for GET, formata os valores para aparecer R$ na tela de edição
+    # Formata valores para exibir R$ no input ao abrir edição
     if request.method == 'GET':
-        if registro.valor_contrato:
-            form.valor_contrato.data = f"R$ {registro.valor_contrato:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-        if registro.custo_produto:
-            form.custo_produto.data = f"R$ {registro.custo_produto:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-        if registro.valor_quitado:
-            form.valor_quitado.data = f"R$ {registro.valor_quitado:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+        campos_moeda = ['valor_contrato', 'custo_produto', 'valor_quitado', 'custos_contrato', 'valor_devolvido']
+        for campo in campos_moeda:
+            valor = getattr(registro, campo)
+            if valor:
+                getattr(form, campo).data = f"R$ {valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
 
     return render_template('edit.html', form=form, registro=registro)
 
@@ -281,15 +295,8 @@ def registros():
     total_liquido = query.with_entities(func.sum(Registro.liquido_empresa)).scalar() or 0.0
     registros_db = query.order_by(Registro.criado_em.desc()).all()
     supervisores = db.session.query(Registro.supervisor).distinct().order_by(Registro.supervisor).all()
-    
     form = OperacaoForm() 
-    
-    return render_template('registros.html', 
-                           registros=registros_db, 
-                           supervisores=supervisores,
-                           total_liquido=total_liquido,
-                           request_args=request.args,
-                           form=form)
+    return render_template('registros.html', registros=registros_db, supervisores=supervisores, total_liquido=total_liquido, request_args=request.args, form=form)
 
 @app.route('/download_pdf')
 @login_required
@@ -305,11 +312,7 @@ def download_pdf():
             logo_data_uri = f'data:image/png;base64,{encoded}'
     except: pass
 
-    html = render_template('report_template.html', 
-        registros=registros, total_liquido=total_liquido,
-        data_hoje=datetime.now().strftime('%d/%m/%Y'),
-        request_args=request.args, logo_data_uri=logo_data_uri
-    )
+    html = render_template('report_template.html', registros=registros, total_liquido=total_liquido, data_hoje=datetime.now().strftime('%d/%m/%Y'), request_args=request.args, logo_data_uri=logo_data_uri)
     pdf = HTML(string=html, base_url=request.base_url).write_pdf()
     return Response(pdf, mimetype='application/pdf', headers={'Content-Disposition': 'attachment;filename=relatorio.pdf'})
 

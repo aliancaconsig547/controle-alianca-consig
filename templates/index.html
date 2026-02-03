@@ -44,25 +44,7 @@
             </div>
             
             <fieldset>
-                <legend>Dados Financeiros Principais</legend>
-                <div class="grid">
-                    <label for="valor_contrato">Valor de Contrato (R$)
-                        <input type="text" id="valor_contrato" name="valor_contrato" placeholder="R$ 0,00" value="{{ form.valor_contrato.data or '' }}">
-                    </label>
-                    <label for="custo_produto">Custo do Produto (R$)
-                        <input type="text" id="custo_produto" name="custo_produto" placeholder="R$ 0,00" value="{{ form.custo_produto.data or '' }}">
-                    </label>
-                    <label for="percentual_comissao">% Comissão
-                        <select id="percentual_comissao" name="percentual_comissao">
-                            <option value="20" {% if form.percentual_comissao.data == 20 %}selected{% endif %}>20%</option>
-                            <option value="30" {% if form.percentual_comissao.data == 30 %}selected{% endif %}>30%</option>
-                        </select>
-                    </label>
-                </div>
-            </fieldset>
-            
-            <fieldset>
-                <legend>Dados do Investidor (Informativo)</legend>
+                <legend>Dados do Investidor</legend>
                 <div class="grid">
                     <label for="investidor">Investidor
                         <input type="text" id="investidor" name="investidor" value="{{ form.investidor.data or '' }}">
@@ -87,13 +69,47 @@
             </fieldset>
 
             <fieldset>
+                <legend>Dados Financeiros Principais</legend>
+                <div class="grid">
+                    <label for="valor_contrato">Valor de Contrato (R$)
+                        <input type="text" id="valor_contrato" name="valor_contrato" placeholder="R$ 0,00" value="{{ form.valor_contrato.data or '' }}">
+                    </label>
+                    <label for="percentual_comissao">% Comissão
+                        <select id="percentual_comissao" name="percentual_comissao">
+                            <option value="20" {% if form.percentual_comissao.data == 20 %}selected{% endif %}>20%</option>
+                            <option value="30" {% if form.percentual_comissao.data == 30 %}selected{% endif %}>30%</option>
+                        </select>
+                    </label>
+                </div>
+                
+                <div class="grid">
+                    
+                    <label for="custo_produto">Custo do Produto (Banco)
+                        <input type="text" id="custo_produto" name="custo_produto" placeholder="R$ 0,00" value="{{ form.custo_produto.data or '' }}">
+                    </label>
+                </div>
+
+                <div class="grid">
+                    <label for="custos_contrato">Custos Extras (Gasolina, Cartório...)
+                        <input type="text" id="custos_contrato" name="custos_contrato" placeholder="R$ 0,00" value="{{ form.custos_contrato.data or '' }}">
+                    </label>
+                    <label for="valor_devolvido">Valor Devolvido (R$)
+                        <input type="text" id="valor_devolvido" name="valor_devolvido" placeholder="R$ 0,00" value="{{ form.valor_devolvido.data or '' }}">
+                    </label>
+                    <label for="data_devolucao">Data Devolução
+                        <input type="date" id="data_devolucao" name="data_devolucao" value="{{ form.data_devolucao.data or '' }}">
+                    </label>
+                </div>
+            </fieldset>
+
+            <fieldset>
                 <legend>Detalhes da Operação</legend>
                 <label for="bancos_quitados">Bancos Quitados
                     <input type="text" id="bancos_quitados" name="bancos_quitados" value="{{ form.bancos_quitados.data or '' }}" placeholder="Ex: C6, PAN, Daycoval">
                 </label>
                 <div class="grid">
                     <label for="banco_contrato">Banco de Contrato
-                        <input type="text" id="banco_contrato" name="banco_contrato" value="{{ form.banco_contrato.data or '' }}" placeholder="Ex: Bradesco/Caixa">
+                        <input type="text" id="banco_contrato" name="banco_contrato" value="{{ form.banco_contrato.data or 'Bradesco' }}" placeholder="Ex: Bradesco/Caixa">
                     </label>
                     <label for="agencia">Agência
                         <input type="text" id="agencia" name="agencia" value="{{ form.agencia.data or '' }}" placeholder="Ex: Asa Norte">

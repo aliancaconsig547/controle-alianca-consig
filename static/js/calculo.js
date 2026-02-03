@@ -1,41 +1,26 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- FUNÇÕES UTILITÁRIAS DE MÁSCARA E CONVERSÃO ---
-    
-    // Converte "R$ 1.500,50" -> 1500.50 (Float)
+    // --- FUNÇÕES UTILITÁRIAS ---
     function parseMoney(value) {
         if (!value) return 0;
-        // Remove tudo que não é dígito ou vírgula
-        let clean = value.replace(/[^\d,]/g, ''); 
-        // Troca vírgula por ponto para o JS entender
-        clean = clean.replace(',', '.');
+        let clean = value.replace(/[^\d,]/g, '').replace(',', '.');
         return parseFloat(clean) || 0;
     }
 
-    // Aplica máscara de moeda (Ex: 1500.5 -> R$ 1.500,50) no INPUT
     const maskMoney = (event) => {
         let input = event.target;
-        let value = input.value.replace(/\D/g, ''); // Remove tudo que não é número
-        
-        value = (Number(value) / 100).toLocaleString('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        });
-        
+        let value = input.value.replace(/\D/g, ''); 
+        value = (Number(value) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         input.value = value;
-        calcularLiquido(); // Recalcula sempre que a máscara roda
+        calcularLiquido();
     };
 
-    // Aplica máscara de CPF
     const maskCPF = (event) => {
         let input = event.target;
-        let v = input.value.replace(/\D/g, ""); // Remove não dígitos
-        
+        let v = input.value.replace(/\D/g, "");
         if (v.length > 14) v = v.slice(0, 14);
-        
         v = v.replace(/(\d{3})(\d)/, "$1.$2");
         v = v.replace(/(\d{3})(\d)/, "$1.$2");
         v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-        
         input.value = v;
     };
 
@@ -43,24 +28,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const valorContratoInput = document.getElementById('valor_contrato');
     const valorQuitadoInput = document.getElementById('valor_quitado');
     const custoProdutoInput = document.getElementById('custo_produto');
+    const custosContratoInput = document.getElementById('custos_contrato'); // Novo
+    const valorDevolvidoInput = document.getElementById('valor_devolvido'); // Novo
     const percComissaoInput = document.getElementById('percentual_comissao');
     const resultadoSpan = document.getElementById('resultado_liquido');
     const cpfInput = document.getElementById('cpf');
 
-    // --- APLICAÇÃO DOS EVENTOS ---
-    
-    // Máscara de CPF
-    if (cpfInput) {
-        cpfInput.addEventListener('input', maskCPF);
-    }
+    // --- EVENT LISTENERS ---
+    if (cpfInput) cpfInput.addEventListener('input', maskCPF);
 
-    // Máscara de Moeda e Cálculo
-    [valorContratoInput, valorQuitadoInput, custoProdutoInput].forEach(el => {
+    // Inputs Monetários (Adicionado os novos campos na lista)
+    const inputsMonetarios = [
+        valorContratoInput, 
+        valorQuitadoInput, 
+        custoProdutoInput, 
+        custosContratoInput, 
+        valorDevolvidoInput
+    ];
+
+    inputsMonetarios.forEach(el => {
         if (el) {
             el.addEventListener('input', maskMoney);
-            // Formata o valor inicial se já vier preenchido do backend (edição)
+            // Formata ao carregar se já tiver valor (Edição)
             if(el.value && !el.value.includes('R$')) {
-                // Simula um evento para formatar o valor inicial
                  let val = parseFloat(el.value).toFixed(2).replace('.', '');
                  el.value = val;
                  el.dispatchEvent(new Event('input'));
@@ -68,20 +58,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    if (percComissaoInput) {
-        percComissaoInput.addEventListener('change', calcularLiquido);
-    }
+    if (percComissaoInput) percComissaoInput.addEventListener('change', calcularLiquido);
 
-    // --- LÓGICA DE CÁLCULO ---
+    // --- LÓGICA DE CÁLCULO ATUALIZADA ---
     function calcularLiquido() {
         const valorContrato = parseMoney(valorContratoInput.value);
         const valorQuitado = parseMoney(valorQuitadoInput.value);
         const custoProduto = parseMoney(custoProdutoInput.value);
+        const custosExtras = parseMoney(custosContratoInput.value); // Novo
+        const valorDevolvido = parseMoney(valorDevolvidoInput.value); // Novo
+        
         const percComissao = parseFloat(percComissaoInput.value) / 100 || 0;
 
-        // Fórmula
         const valorComissao = valorContrato * percComissao;
-        const liquidoFinal = valorContrato - valorQuitado - valorComissao - custoProduto;
+        
+        // FÓRMULA: Contrato - Quitado - Comissão - CustoProduto - CustosExtras - Devolvido
+        const liquidoFinal = valorContrato - valorQuitado - valorComissao - custoProduto - custosExtras - valorDevolvido;
 
         resultadoSpan.textContent = liquidoFinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
