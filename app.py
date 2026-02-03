@@ -12,7 +12,7 @@ from datetime import datetime
 
 # --- IMPORTAÇÕES DE SEGURANÇA ---
 from flask_wtf import FlaskForm, CSRFProtect
-from wtforms import StringField, FloatField, IntegerField, BooleanField, PasswordField, DateField, SelectField
+from wtforms import StringField, FloatField, IntegerField, BooleanField, PasswordField, SelectField
 from wtforms.validators import DataRequired, Length, Optional
 
 # Carrega as variáveis de ambiente
@@ -37,11 +37,31 @@ login_manager.login_view = 'login'
 login_manager.login_message = "Por favor, faça o login para acessar esta página."
 login_manager.login_message_category = "info"
 
+# --- FUNÇÃO AUXILIAR PARA LIMPAR DINHEIRO (TEXTO -> FLOAT) ---
+def parse_brl(valor_str):
+    """
+    Transforma 'R$ 1.500,50' em 1500.50
+    """
+    if not valor_str:
+        return 0.0
+    if isinstance(valor_str, float) or isinstance(valor_str, int):
+        return float(valor_str)
+        
+    # Remove R$, espaços e pontos de milhar
+    limpo = valor_str.replace('R$', '').replace('.', '').replace(' ', '')
+    # Troca a vírgula decimal por ponto
+    limpo = limpo.replace(',', '.')
+    
+    try:
+        return float(limpo)
+    except ValueError:
+        return 0.0
+
 # --- MODELO DO BANCO DE DADOS ---
 class Registro(db.Model):
     __tablename__ = 'registros'
     id = db.Column(db.Integer, primary_key=True)
-    nome_cliente = db.Column(db.String(150), nullable=False) # Aceita string vazia
+    nome_cliente = db.Column(db.String(150), nullable=False)
     cpf = db.Column(db.String(14), nullable=False)
     valor_quitado = db.Column(db.Float, nullable=True)
     data_quitacao = db.Column(db.String(10), nullable=False)
@@ -81,16 +101,16 @@ class LoginForm(FlaskForm):
     password = PasswordField('Senha', validators=[DataRequired()])
 
 class OperacaoForm(FlaskForm):
-    # TODAS AS VALIDAÇÕES 'DataRequired' FORAM TROCADAS POR 'Optional'
     nome_cliente = StringField('Nome Cliente', validators=[Optional()])
-    cpf = StringField('CPF', validators=[Optional()]) # Removemos obrigatoriedade e length min
+    cpf = StringField('CPF', validators=[Optional()])
     
-    valor_contrato = FloatField('Valor Contrato', validators=[Optional()])
-    custo_produto = FloatField('Custo Produto', validators=[Optional()])
+    # MUDANÇA IMPORTANTE: Agora são StringField para aceitar a máscara "R$ ..."
+    valor_contrato = StringField('Valor Contrato', validators=[Optional()])
+    custo_produto = StringField('Custo Produto', validators=[Optional()])
+    valor_quitado = StringField('Valor Quitado', validators=[Optional()])
+    
     percentual_comissao = SelectField('% Comissão', choices=[('20', '20%'), ('30', '30%')], coerce=int, validators=[Optional()])
-    
     investidor = StringField('Investidor', validators=[Optional()])
-    valor_quitado = FloatField('Valor Quitado', validators=[Optional()])
     percentual_investidor = SelectField('% Investidor', choices=[('0', '0%'), ('7', '7%'), ('8', '8%'), ('9', '9%'), ('10', '10%')], coerce=int, default=0)
     investidor_fora = BooleanField('Investidor de Fora')
     
@@ -134,13 +154,14 @@ def index():
     form = OperacaoForm()
     
     if form.validate_on_submit():
-        # Lógica de segurança para campos vazios (Preenche com 0 ou texto vazio)
-        valor_contrato = form.valor_contrato.data or 0.0
-        valor_quitado = form.valor_quitado.data or 0.0
-        custo_produto = form.custo_produto.data or 0.0
+        # CONVERTE O TEXTO (R$) PARA NÚMERO (FLOAT)
+        valor_contrato = parse_brl(form.valor_contrato.data)
+        valor_quitado = parse_brl(form.valor_quitado.data)
+        custo_produto = parse_brl(form.custo_produto.data)
+        
         percentual_comissao = form.percentual_comissao.data or 0
         
-        # Prevenção de erro em Strings obrigatórias no Banco
+        # Prevenção de erro em Strings
         nome_cliente = form.nome_cliente.data or "Sem Nome"
         cpf = form.cpf.data or ""
         supervisor = form.supervisor.data or "Não Informado"
@@ -195,18 +216,32 @@ def edit(id):
         registro.vendedor = form.vendedor.data or "Não Informado"
         registro.data_quitacao = form.data_quitacao.data or datetime.now().strftime('%Y-%m-%d')
         
-        # Recalcula líquido (com proteção contra None)
-        v_contrato = registro.valor_contrato or 0.0
-        v_quitado = registro.valor_quitado or 0.0
-        v_custo = registro.custo_produto or 0.0
-        p_comissao = registro.percentual_comissao or 0
+        # CONVERSÃO PARA FLOAT NA EDIÇÃO
+        v_contrato = parse_brl(form.valor_contrato.data)
+        v_quitado = parse_brl(form.valor_quitado.data)
+        v_custo = parse_brl(form.custo_produto.data)
         
+        # Atualiza os valores convertidos no objeto
+        registro.valor_contrato = v_contrato
+        registro.valor_quitado = v_quitado
+        registro.custo_produto = v_custo
+        
+        p_comissao = registro.percentual_comissao or 0
         valor_comissao = v_contrato * (p_comissao / 100)
         registro.liquido_empresa = v_contrato - v_quitado - valor_comissao - v_custo
         
         db.session.commit()
         flash('Operação atualizada com sucesso!', 'success')
         return redirect(url_for('registros'))
+    
+    # Se for GET, formata os valores para aparecer R$ na tela de edição
+    if request.method == 'GET':
+        if registro.valor_contrato:
+            form.valor_contrato.data = f"R$ {registro.valor_contrato:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+        if registro.custo_produto:
+            form.custo_produto.data = f"R$ {registro.custo_produto:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+        if registro.valor_quitado:
+            form.valor_quitado.data = f"R$ {registro.valor_quitado:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
 
     return render_template('edit.html', form=form, registro=registro)
 
