@@ -10,7 +10,7 @@ from werkzeug.security import check_password_hash
 from weasyprint import HTML
 from datetime import datetime
 
-# --- NOVAS IMPORTAÇÕES DE SEGURANÇA ---
+# --- IMPORTAÇÕES DE SEGURANÇA ---
 from flask_wtf import FlaskForm, CSRFProtect
 from wtforms import StringField, FloatField, IntegerField, BooleanField, PasswordField, DateField, SelectField
 from wtforms.validators import DataRequired, Length, Optional
@@ -28,7 +28,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Inicialização de Extensões
 db = SQLAlchemy(app)
-csrf = CSRFProtect(app) # Proteção CSRF ativada globalmente
+csrf = CSRFProtect(app) 
 
 # --- LOGIN MANAGER ---
 login_manager = LoginManager()
@@ -41,7 +41,7 @@ login_manager.login_message_category = "info"
 class Registro(db.Model):
     __tablename__ = 'registros'
     id = db.Column(db.Integer, primary_key=True)
-    nome_cliente = db.Column(db.String(150), nullable=False)
+    nome_cliente = db.Column(db.String(150), nullable=False) # Aceita string vazia
     cpf = db.Column(db.String(14), nullable=False)
     valor_quitado = db.Column(db.Float, nullable=True)
     data_quitacao = db.Column(db.String(10), nullable=False)
@@ -59,7 +59,7 @@ class Registro(db.Model):
     banco_contrato = db.Column(db.String(200), nullable=True)
     agencia = db.Column(db.String(100), nullable=True)
 
-# --- USER MOCK (Mantido conforme original) ---
+# --- USER MOCK ---
 class User(UserMixin):
     def __init__(self, id, username, password_hash):
         self.id = id
@@ -81,13 +81,13 @@ class LoginForm(FlaskForm):
     password = PasswordField('Senha', validators=[DataRequired()])
 
 class OperacaoForm(FlaskForm):
-    nome_cliente = StringField('Nome Cliente', validators=[DataRequired()])
-    cpf = StringField('CPF', validators=[DataRequired(), Length(min=11, max=14)])
+    # TODAS AS VALIDAÇÕES 'DataRequired' FORAM TROCADAS POR 'Optional'
+    nome_cliente = StringField('Nome Cliente', validators=[Optional()])
+    cpf = StringField('CPF', validators=[Optional()]) # Removemos obrigatoriedade e length min
     
-    # Valores monetários (FloatField para simplificar o backend, o JS trata a máscara)
-    valor_contrato = FloatField('Valor Contrato', validators=[DataRequired()])
-    custo_produto = FloatField('Custo Produto', validators=[DataRequired()])
-    percentual_comissao = SelectField('% Comissão', choices=[('20', '20%'), ('30', '30%')], coerce=int, validators=[DataRequired()])
+    valor_contrato = FloatField('Valor Contrato', validators=[Optional()])
+    custo_produto = FloatField('Custo Produto', validators=[Optional()])
+    percentual_comissao = SelectField('% Comissão', choices=[('20', '20%'), ('30', '30%')], coerce=int, validators=[Optional()])
     
     investidor = StringField('Investidor', validators=[Optional()])
     valor_quitado = FloatField('Valor Quitado', validators=[Optional()])
@@ -98,9 +98,9 @@ class OperacaoForm(FlaskForm):
     banco_contrato = StringField('Banco Contrato')
     agencia = StringField('Agência')
     
-    supervisor = StringField('Supervisor', validators=[DataRequired()])
-    vendedor = StringField('Vendedor', validators=[DataRequired()])
-    data_quitacao = StringField('Data Operação', validators=[DataRequired()]) # Mantido String para compatibilidade com input date HTML
+    supervisor = StringField('Supervisor', validators=[Optional()])
+    vendedor = StringField('Vendedor', validators=[Optional()])
+    data_quitacao = StringField('Data Operação', validators=[Optional()]) 
 
 with app.app_context():
     db.create_all()
@@ -134,18 +134,25 @@ def index():
     form = OperacaoForm()
     
     if form.validate_on_submit():
-        # Lógica de cálculo (Recalcula no backend para segurança)
+        # Lógica de segurança para campos vazios (Preenche com 0 ou texto vazio)
         valor_contrato = form.valor_contrato.data or 0.0
         valor_quitado = form.valor_quitado.data or 0.0
         custo_produto = form.custo_produto.data or 0.0
         percentual_comissao = form.percentual_comissao.data or 0
         
+        # Prevenção de erro em Strings obrigatórias no Banco
+        nome_cliente = form.nome_cliente.data or "Sem Nome"
+        cpf = form.cpf.data or ""
+        supervisor = form.supervisor.data or "Não Informado"
+        vendedor = form.vendedor.data or "Não Informado"
+        data_quitacao = form.data_quitacao.data or datetime.now().strftime('%Y-%m-%d')
+
         valor_comissao = valor_contrato * (percentual_comissao / 100)
         liquido_empresa = valor_contrato - valor_quitado - valor_comissao - custo_produto
 
         novo_registro = Registro(
-            nome_cliente=form.nome_cliente.data,
-            cpf=form.cpf.data,
+            nome_cliente=nome_cliente,
+            cpf=cpf,
             valor_contrato=valor_contrato,
             custo_produto=custo_produto,
             percentual_comissao=percentual_comissao,
@@ -156,9 +163,9 @@ def index():
             bancos_quitados=form.bancos_quitados.data,
             banco_contrato=form.banco_contrato.data,
             agencia=form.agencia.data,
-            supervisor=form.supervisor.data,
-            vendedor=form.vendedor.data,
-            data_quitacao=form.data_quitacao.data,
+            supervisor=supervisor,
+            vendedor=vendedor,
+            data_quitacao=data_quitacao,
             liquido_empresa=liquido_empresa
         )
         db.session.add(novo_registro)
@@ -166,7 +173,6 @@ def index():
         flash('Operação cadastrada com sucesso!', 'success')
         return redirect(url_for('registros'))
         
-    # Se houver erros de validação, eles serão exibidos no template
     if form.errors:
         for err_msg in form.errors.values():
             flash(f'Erro no formulário: {err_msg}', 'danger')
@@ -177,14 +183,26 @@ def index():
 @login_required
 def edit(id):
     registro = Registro.query.get_or_404(id)
-    form = OperacaoForm(obj=registro) # Popula o form com dados do banco
+    form = OperacaoForm(obj=registro) 
     
     if form.validate_on_submit():
-        form.populate_obj(registro) # Atualiza o objeto com dados do form
+        form.populate_obj(registro) 
         
-        # Recalcula líquido
-        valor_comissao = registro.valor_contrato * (registro.percentual_comissao / 100)
-        registro.liquido_empresa = registro.valor_contrato - (registro.valor_quitado or 0) - valor_comissao - registro.custo_produto
+        # Garantir valores padrão caso venha vazio na edição
+        registro.nome_cliente = form.nome_cliente.data or "Sem Nome"
+        registro.cpf = form.cpf.data or ""
+        registro.supervisor = form.supervisor.data or "Não Informado"
+        registro.vendedor = form.vendedor.data or "Não Informado"
+        registro.data_quitacao = form.data_quitacao.data or datetime.now().strftime('%Y-%m-%d')
+        
+        # Recalcula líquido (com proteção contra None)
+        v_contrato = registro.valor_contrato or 0.0
+        v_quitado = registro.valor_quitado or 0.0
+        v_custo = registro.custo_produto or 0.0
+        p_comissao = registro.percentual_comissao or 0
+        
+        valor_comissao = v_contrato * (p_comissao / 100)
+        registro.liquido_empresa = v_contrato - v_quitado - valor_comissao - v_custo
         
         db.session.commit()
         flash('Operação atualizada com sucesso!', 'success')
@@ -195,8 +213,6 @@ def edit(id):
 @app.route('/delete/<int:id>', methods=['POST'])
 @login_required
 def delete(id):
-    # Nota: A proteção CSRF é aplicada automaticamente aqui pelo Flask-WTF
-    # se o formulário HTML incluir o token hidden
     registro = Registro.query.get_or_404(id)
     try:
         db.session.delete(registro)
@@ -231,7 +247,6 @@ def registros():
     registros_db = query.order_by(Registro.criado_em.desc()).all()
     supervisores = db.session.query(Registro.supervisor).distinct().order_by(Registro.supervisor).all()
     
-    # Formulário vazio apenas para gerar o CSRF token se necessário em botões POST
     form = OperacaoForm() 
     
     return render_template('registros.html', 

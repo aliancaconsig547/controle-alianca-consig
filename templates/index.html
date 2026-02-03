@@ -36,10 +36,10 @@
 
             <div class="grid">
                 <label for="nome_cliente">Nome do Cliente
-                    <input type="text" id="nome_cliente" name="nome_cliente" value="{{ form.nome_cliente.data or '' }}" required>
+                    <input type="text" id="nome_cliente" name="nome_cliente" value="{{ form.nome_cliente.data or '' }}">
                 </label>
                 <label for="cpf">CPF
-                    <input type="text" id="cpf" name="cpf" maxlength="14" value="{{ form.cpf.data or '' }}" required>
+                    <input type="text" id="cpf" name="cpf" maxlength="14" value="{{ form.cpf.data or '' }}">
                 </label>
             </div>
             
@@ -47,13 +47,13 @@
                 <legend>Dados Financeiros Principais</legend>
                 <div class="grid">
                     <label for="valor_contrato">Valor de Contrato (R$)
-                        <input type="text" id="valor_contrato" name="valor_contrato" placeholder="R$ 0,00" value="{{ form.valor_contrato.data or '' }}" required>
+                        <input type="text" id="valor_contrato" name="valor_contrato" placeholder="R$ 0,00" value="{{ form.valor_contrato.data or '' }}">
                     </label>
                     <label for="custo_produto">Custo do Produto (R$)
-                        <input type="text" id="custo_produto" name="custo_produto" placeholder="R$ 0,00" value="{{ form.custo_produto.data or '' }}" required>
+                        <input type="text" id="custo_produto" name="custo_produto" placeholder="R$ 0,00" value="{{ form.custo_produto.data or '' }}">
                     </label>
                     <label for="percentual_comissao">% Comissão
-                        <select id="percentual_comissao" name="percentual_comissao" required>
+                        <select id="percentual_comissao" name="percentual_comissao">
                             <option value="20" {% if form.percentual_comissao.data == 20 %}selected{% endif %}>20%</option>
                             <option value="30" {% if form.percentual_comissao.data == 30 %}selected{% endif %}>30%</option>
                         </select>
@@ -103,13 +103,13 @@
             
             <div class="grid">
                 <label for="supervisor">Supervisor
-                    <input type="text" id="supervisor" name="supervisor" value="{{ form.supervisor.data or '' }}" required>
+                    <input type="text" id="supervisor" name="supervisor" value="{{ form.supervisor.data or '' }}">
                 </label>
                 <label for="vendedor">Vendedor
-                    <input type="text" id="vendedor" name="vendedor" value="{{ form.vendedor.data or '' }}" required>
+                    <input type="text" id="vendedor" name="vendedor" value="{{ form.vendedor.data or '' }}">
                 </label>
                 <label for="data_quitacao">Data da Operação
-                    <input type="date" id="data_quitacao" name="data_quitacao" value="{{ form.data_quitacao.data or '' }}" required>
+                    <input type="date" id="data_quitacao" name="data_quitacao" value="{{ form.data_quitacao.data or '' }}">
                 </label>
             </div>
             
