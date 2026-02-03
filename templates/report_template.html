@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Operações</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-size: 10pt;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+
+        .header img {
+            /* Logo ajustada, maior para PDF */
+            max-height: 90px;
+            margin-bottom: 10px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #007bff;
+        }
+
+        .report-info {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .total-summary {
+            margin-top: 20px;
+            text-align: right;
+            font-size: 14pt;
+            font-weight: bold;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: -30px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 8pt;
+            color: #777;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <img src="{{ logo_data_uri }}" alt="Logo da Empresa">
+        <h1>Relatório de Operações</h1>
+    </div>
+
+
+    <div class="report-info">
+        <strong>Data de Emissão:</strong> {{ data_hoje }}<br>
+        <strong>Filtros Aplicados:</strong>
+        <ul>
+            {% if request_args.q %}<li>Busca: "{{ request_args.q }}"</li>{% endif %}
+            {% if request_args.supervisor %}<li>Supervisor: "{{ request_args.supervisor }}"</li>{% endif %}
+            {% if request_args.start_date or request_args.end_date %}
+            <li>Período: de {{ request_args.start_date or 'Início' }} até {{ request_args.end_date or 'Fim' }}</li>
+            {% endif %}
+            {% if not request_args %}<li>Nenhum filtro aplicado.</li>{% endif %}
+        </ul>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Valor Contrato</th>
+                <th>Líquido Empresa</th>
+                <th>Vendedor</th>
+                <th>Data</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registro in registros %}
+            <tr>
+                <td>{{ registro.nome_cliente }}</td>
+                <td>R$ {{ "%.2f"|format(registro.valor_contrato) }}</td>
+                <td>R$ {{ "%.2f"|format(registro.liquido_empresa) }}</td>
+                <td>{{ registro.vendedor }}</td>
+                <td>{{ registro.data_quitacao }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align: center;">Nenhum registro encontrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="total-summary">
+        Líquido Total (Filtro): R$ {{ "%.2f"|format(total_liquido) }}
+    </div>
+
+    <div class="footer">
+        Relatório gerado pelo Sistema de Controle - Página {{ page_num }}
+    </div>
+</body>
+
+</html>
