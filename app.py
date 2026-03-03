@@ -139,7 +139,7 @@ class OperacaoForm(FlaskForm):
     
     supervisor = StringField('Supervisor', validators=[Optional()])
     vendedor = StringField('Vendedor', validators=[Optional()])
-    data_quitacao = StringField('Data Operação', validators=[Optional()]) 
+    data_quitacao = StringField('Data de Quitação', validators=[Optional()]) 
 
 with app.app_context():
     db.create_all()

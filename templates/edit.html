@@ -39,6 +39,9 @@
                     <label for="investidor">Investidor
                         <input type="text" id="investidor" name="investidor" value="{{ form.investidor.data or '' }}">
                     </label>
+                    <label for="valor_quitado">Valor Quitado (R$)
+                        <input type="text" id="valor_quitado" name="valor_quitado" value="{{ form.valor_quitado.data or '' }}">
+                    </label>
                     <label for="percentual_investidor">% Investidor
                         <select id="percentual_investidor" name="percentual_investidor">
                             <option value="0" {% if form.percentual_investidor.data == 0 %}selected{% endif %}>0%</option>
@@ -49,10 +52,15 @@
                         </select>
                     </label>
                 </div>
-                <label for="investidor_fora">
-                    <input type="checkbox" id="investidor_fora" name="investidor_fora" value="y" {% if form.investidor_fora.data %}checked{% endif %}>
-                    Investidor de Fora
-                </label>
+                <div class="grid">
+                    <label for="data_quitacao">Data de Quitação
+                        <input type="date" id="data_quitacao" name="data_quitacao" value="{{ form.data_quitacao.data }}">
+                    </label>
+                    <label for="investidor_fora" style="margin-top: auto; padding-bottom: 10px;">
+                        <input type="checkbox" id="investidor_fora" name="investidor_fora" value="y" {% if form.investidor_fora.data %}checked{% endif %}>
+                        Investidor de Fora
+                    </label>
+                </div>
             </fieldset>
 
             <fieldset>
@@ -70,9 +78,6 @@
                 </div>
                 
                 <div class="grid">
-                    <label for="valor_quitado">Valor Quitado (R$)
-                        <input type="text" id="valor_quitado" name="valor_quitado" value="{{ form.valor_quitado.data or '' }}">
-                    </label>
                     <label for="custo_produto">Custo do Produto (Banco)
                         <input type="text" id="custo_produto" name="custo_produto" value="{{ form.custo_produto.data or '' }}">
                     </label>
@@ -112,9 +117,6 @@
                 </label>
                 <label for="vendedor">Vendedor
                     <input type="text" id="vendedor" name="vendedor" value="{{ form.vendedor.data }}">
-                </label>
-                <label for="data_quitacao">Data da Operação
-                    <input type="date" id="data_quitacao" name="data_quitacao" value="{{ form.data_quitacao.data }}">
                 </label>
             </div>
             

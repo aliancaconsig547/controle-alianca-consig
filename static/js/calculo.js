@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const valorComissao = valorContrato * percComissao;
         
         // FÓRMULA: Contrato - Quitado - Comissão - CustoProduto - CustosExtras - Devolvido
-        const liquidoFinal = valorContrato - valorQuitado - valorComissao - custoProduto - custosExtras - valorDevolvido;
+        const liquidoFinal = valorContrato - valorQuitado - valorComissao - custoProduto - custosExtras;
 
         resultadoSpan.textContent = liquidoFinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }

@@ -62,10 +62,15 @@
                         </select>
                     </label>
                 </div>
-                <label for="investidor_fora">
-                    <input type="checkbox" id="investidor_fora" name="investidor_fora" value="y" {% if form.investidor_fora.data %}checked{% endif %}>
-                    Investidor de Fora
-                </label>
+                <div class="grid">
+                    <label for="data_quitacao">Data de Quitação
+                        <input type="date" id="data_quitacao" name="data_quitacao" value="{{ form.data_quitacao.data or '' }}">
+                    </label>
+                    <label for="investidor_fora" style="margin-top: auto; padding-bottom: 10px;">
+                        <input type="checkbox" id="investidor_fora" name="investidor_fora" value="y" {% if form.investidor_fora.data %}checked{% endif %}>
+                        Investidor de Fora
+                    </label>
+                </div>
             </fieldset>
 
             <fieldset>
@@ -83,7 +88,6 @@
                 </div>
                 
                 <div class="grid">
-                    
                     <label for="custo_produto">Custo do Produto (Banco)
                         <input type="text" id="custo_produto" name="custo_produto" placeholder="R$ 0,00" value="{{ form.custo_produto.data or '' }}">
                     </label>
@@ -123,9 +127,6 @@
                 </label>
                 <label for="vendedor">Vendedor
                     <input type="text" id="vendedor" name="vendedor" value="{{ form.vendedor.data or '' }}">
-                </label>
-                <label for="data_quitacao">Data da Operação
-                    <input type="date" id="data_quitacao" name="data_quitacao" value="{{ form.data_quitacao.data or '' }}">
                 </label>
             </div>
             
